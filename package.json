@@ -1,0 +1,25 @@
+{
+  "name": "slpdex-offers",
+  "version": "0.1.0",
+  "description": "Query offers on slpdex.cash",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/slpdex/slpdex-offers.git"
+  },
+  "keywords": [
+    "slpdex",
+    "slpdex.cash",
+    "offers",
+    "slpdex-offers"
+  ],
+  "author": "Tobias Ruck",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/slpdex/slpdex-offers/issues"
+  },
+  "homepage": "https://github.com/slpdex/slpdex-offers#readme"
+}
