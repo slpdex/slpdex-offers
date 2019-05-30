@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "target": "es2015",
+    "outDir": "dist",
+    "lib": [
+      "es2015",
+      "dom"
+    ],
+    "typeRoots": ["node_modules/@types", "src/@types"],
+  },
+  "include": ["src/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

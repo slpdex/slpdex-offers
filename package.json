@@ -1,8 +1,8 @@
 {
-  "name": "slpdex-offers",
-  "version": "0.1.0",
+  "name": "slpdex-market",
+  "version": "0.1.7",
   "description": "Query offers on slpdex.cash",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,12 +14,24 @@
     "slpdex",
     "slpdex.cash",
     "offers",
-    "slpdex-offers"
+    "slpdex-offers",
+    "market",
+    "slpdex-market"
   ],
   "author": "Tobias Ruck",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/slpdex/slpdex-offers/issues"
   },
-  "homepage": "https://github.com/slpdex/slpdex-offers#readme"
+  "homepage": "https://github.com/slpdex/slpdex-offers#readme",
+  "devDependencies": {
+    "typescript": "^3.4.5"
+  },
+  "dependencies": {
+    "@types/js-base64": "^2.3.1",
+    "cashaddrjs": "^0.3.3",
+    "cashcontracts": "^0.1.20",
+    "immutable": "^4.0.0-rc.12",
+    "js-base64": "^2.5.1"
+  }
 }
