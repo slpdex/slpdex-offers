@@ -1,10 +1,10 @@
 import { Map, List, Set } from 'immutable'
-import * as Immutable from 'immutable'
 import { Base64 } from 'js-base64'
-import { LOKAD_ID_BASE64, VERSION, decodePrice } from './base';
-import { defaultNetworkSettings } from './network';
+import { LOKAD_ID_BASE64, VERSION, decodePrice } from './base'
+import { defaultNetworkSettings } from './network'
+import BigNumber from 'bignumber.js'
 
-interface TokenDetails {
+export interface TokenDetails {
     decimals: number
     timestamp: string
     timestampUnix: number
@@ -60,48 +60,51 @@ interface TokenTotal {
     numberOfClosedOffers: number
     lastTrade: {
         timestamp: number | undefined
-        pricePerToken: number
+        pricePerToken: BigNumber
         isAccepted: boolean
     }
 }
 
 interface TokenVolume {
     last24h: {
-        volumeTokens: number
-        volumeSatoshis: number
+        volumeTokens: BigNumber
+        volumeSatoshis: BigNumber
         numberOfTrades: number
     }
 }
 
 interface TokenPrice {
     last24h: {
-        pricePerToken: number
+        pricePerToken: BigNumber
     }
 }
 
 interface TokenPriceIncrease {
     last24h: {
-        priceIncrease: number | undefined
+        priceIncrease: BigNumber | undefined
     }
 }
 
 export interface TokenOverview {
     tokenId: string
+    decimals: number
+    symbol: string
+    name: string
     totalNumberOfOpenOffers: number
     totalNumberOfClosedOffers: number
-    totalSupplyToken: number
-    marketCapSatoshis: number | undefined
+    totalSupplyToken: BigNumber
+    marketCapSatoshis: BigNumber | undefined
     lastTrade: {
         timestamp: number | undefined
-        pricePerToken: number | undefined
+        pricePerToken: BigNumber | undefined
         isAccepted: boolean | undefined
     }
     last24h: {
-        volumeTokens: number
-        volumeSatoshis: number
+        volumeTokens: BigNumber
+        volumeSatoshis: BigNumber
         numberOfTrades: number
-        pricePerToken: number | undefined
-        priceIncrease: number | undefined
+        pricePerToken: BigNumber | undefined
+        priceIncrease: BigNumber | undefined
     }
 }
 
@@ -302,8 +305,8 @@ export class MarketOverview {
                     {
                         last24h: {
                             numberOfTrades: entry.numberOfTrades,
-                            volumeSatoshis: entry.volumeSatoshis,
-                            volumeTokens: parseFloat(entry.volumeTokens),
+                            volumeSatoshis: new BigNumber(entry.volumeSatoshis),
+                            volumeTokens: new BigNumber(entry.volumeTokens),
                         }
                     },
                 ]))
@@ -319,8 +322,8 @@ export class MarketOverview {
                                 item = {
                                     last24h: {
                                         numberOfTrades: itemA.last24h.numberOfTrades + itemB.last24h.numberOfTrades,
-                                        volumeTokens: itemA.last24h.volumeTokens + itemB.last24h.volumeTokens,
-                                        volumeSatoshis: itemA.last24h.volumeSatoshis + itemB.last24h.volumeSatoshis,
+                                        volumeTokens: itemA.last24h.volumeTokens.plus(itemB.last24h.volumeTokens),
+                                        volumeSatoshis: itemA.last24h.volumeSatoshis.plus(itemB.last24h.volumeSatoshis),
                                     }
                                 }
                             if (item === undefined) throw "Impossible"
@@ -387,11 +390,11 @@ export class MarketOverview {
                         key,
                         lastTrade !== undefined && ago24h !== undefined ?
                             {last24h: {
-                                priceIncrease: (lastTrade.lastTrade.pricePerToken / ago24h.last24h.pricePerToken) - 1.0,
+                                priceIncrease: (lastTrade.lastTrade.pricePerToken.div(ago24h.last24h.pricePerToken)).minus('1'),
                             }} :
                             {last24h: {
-                                priceIncrease: ago24h !== undefined ? 0 : undefined,
-                            }}
+                                priceIncrease: ago24h !== undefined ? new BigNumber(0) : undefined,
+                            }},
                     ]
                 })
         )
@@ -406,10 +409,13 @@ export class MarketOverview {
                 const tokenPriceIncreases = this._tokenPriceIncreases.get(key)
                 const overview: TokenOverview = {
                     tokenId: key,
+                    decimals: details.decimals,
+                    name: details.name,
+                    symbol: details.symbol,
                     totalNumberOfOpenOffers: lastTrade ? lastTrade.numberOfOpenOffers : 0,
                     totalNumberOfClosedOffers: lastTrade ? lastTrade.numberOfClosedOffers : 0,
-                    totalSupplyToken: details.circulatingSupply,
-                    marketCapSatoshis: lastTrade ? lastTrade.lastTrade.pricePerToken * details.circulatingSupply : undefined,
+                    totalSupplyToken: new BigNumber(details.circulatingSupply),
+                    marketCapSatoshis: lastTrade ? lastTrade.lastTrade.pricePerToken.times(details.circulatingSupply) : undefined,
                     lastTrade: {
                         isAccepted: lastTrade ? lastTrade.lastTrade.isAccepted : undefined,
                         pricePerToken: lastTrade ? lastTrade.lastTrade.pricePerToken : undefined,
@@ -417,8 +423,8 @@ export class MarketOverview {
                     },
                     last24h: {
                         numberOfTrades: tokenVolumes ? tokenVolumes.last24h.numberOfTrades : 0,
-                        volumeSatoshis: tokenVolumes ? tokenVolumes.last24h.volumeSatoshis : 0,
-                        volumeTokens: tokenVolumes ? tokenVolumes.last24h.volumeTokens : 0,
+                        volumeSatoshis: tokenVolumes ? tokenVolumes.last24h.volumeSatoshis : new BigNumber(0),
+                        volumeTokens: tokenVolumes ? tokenVolumes.last24h.volumeTokens : new BigNumber(0),
                         pricePerToken: tokenPrices ? tokenPrices.last24h.pricePerToken : undefined,
                         priceIncrease: tokenPriceIncreases ? tokenPriceIncreases.last24h.priceIncrease : undefined,
                     },
@@ -428,8 +434,12 @@ export class MarketOverview {
         )
     }
 
-    public tokens(sortByKey: TokenSortByKey, skip: number, limit: number): List<TokenOverview> {
-        let sorter: (overview: TokenOverview) => any
+    public tokenDetails(tokenId: string): TokenDetails | undefined {
+        return this._tokenDetails.get(tokenId)
+    }
+
+    public tokens(sortByKey: TokenSortByKey, skip: number, limit: number, ascending: boolean=false): List<TokenOverview> {
+        let sorter: (overview: TokenOverview) => number | undefined | BigNumber
         switch (sortByKey) {
             case 'totalNumberOfOpenOffers':
                 sorter = (overview) => overview.totalNumberOfOpenOffers
@@ -455,8 +465,15 @@ export class MarketOverview {
             default:
                 throw 'Unknown sort key: ' + sortByKey
         }
+        const factor = ascending ? 1 : -1
+        const applyFactor = (overview: TokenOverview) => {
+            const value = sorter(overview)
+            if (value !== undefined)
+                return new BigNumber(value).times(factor).toNumber()
+            return undefined
+        }
         return this._tokenOverview.valueSeq()
-            .sortBy(sorter)
+            .sortBy(applyFactor)
             .skip(skip)
             .take(limit)
             .toList()

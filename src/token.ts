@@ -3,17 +3,18 @@ import { Base64 } from 'js-base64'
 import { LOKAD_ID_BASE64, VERSION, decodePrice, decodeAddress } from './base'
 import * as cashcontracts from 'cashcontracts'
 import { NetworkSettings } from './network'
+import BigNumber from 'bignumber.js'
 
 export interface TokenOffer {
     timestamp: number | undefined
     utxoEntry: {
         txid: string
         vout: number
-        satoshis: number
+        satoshis: BigNumber
     }
-    pricePerToken: number
-    scriptPrice: number
-    sellAmountToken: number
+    pricePerToken: BigNumber
+    scriptPrice: BigNumber
+    sellAmountToken: BigNumber
     receivingAddress: string
 }
 
@@ -40,6 +41,7 @@ interface TokenOfferEntry {
     }[]
     slp: {
         detail: {
+            tokenIdHex: string
             decimals: number
             outputs: {address: string, amount: string}[]
         }
@@ -49,19 +51,19 @@ interface TokenOfferEntry {
 export class MarketToken {
     public static debug = false
 
-    private _tokenId: string
+    private _tokenId: string | undefined
     private _offers: List<TokenOffer> = List()
     private _networkSettings: NetworkSettings
     private _receivedOfferListeners: (() => void)[] = []
 
-    private constructor(tokenId: string, networkSettings: NetworkSettings) {
+    private constructor(tokenId: string | undefined, networkSettings: NetworkSettings) {
         this._tokenId = tokenId
         this._networkSettings = networkSettings
         this._listenForOffers()
         this._listenForCancels()
     }
 
-    public static async create(tokenId: string, networtkSettings: NetworkSettings): Promise<MarketToken> {
+    public static async create(tokenId: string | undefined, networtkSettings: NetworkSettings): Promise<MarketToken> {
         await cashcontracts.ready
         const tokens = new MarketToken(tokenId, networtkSettings)
         await tokens._fetchOffers()
@@ -158,7 +160,7 @@ export class MarketToken {
             if (offer === undefined)
                 return List.of()
             return List.of(offer)
-        }).sortBy(offer => offer.pricePerToken)
+        }).sortBy(offer => offer.pricePerToken.toNumber())
     }
 
     private _findExchInput(entry: TokenOfferEntry) {
@@ -173,7 +175,7 @@ export class MarketToken {
     }
 
     private _transformTx(entry: TokenOfferEntry): TokenOffer | undefined {
-        const tokenFactor = Math.pow(10, entry.slp.detail.decimals)
+        const tokenFactor = new BigNumber('10').pow(entry.slp.detail.decimals)
         const exchInput = this._findExchInput(entry)
         if (exchInput === undefined)
             return undefined
@@ -194,22 +196,22 @@ export class MarketToken {
                 utxoEntry: {
                     txid: entry.tx.h,
                     vout: 1,
-                    satoshis: utxo.bchSatoshis,
+                    satoshis: new BigNumber(utxo.bchSatoshis),
                     address: utxo.address,
                 },
                 pricePerToken: price.pricePerToken,
                 scriptPrice: price.scriptPrice,
-                sellAmountToken: parseFloat(utxo.slpAmount),
+                sellAmountToken: new BigNumber(utxo.slpAmount),
                 receivingAddress: decodeAddress(exchInput.b4),
                 expectedAddress: '',
             }
             offer.expectedAddress = cashcontracts.advancedTradeOfferAddress(tokenFactor, {
-                tokenId: this._tokenId,
+                tokenId: entry.slp.detail.tokenIdHex,
                 sellAmountToken: offer.sellAmountToken,
                 pricePerToken: offer.pricePerToken,
                 receivingAddress: offer.receivingAddress,
                 feeAddress: this._networkSettings.feeAddress,
-                feeDivisor: this._networkSettings.feeDivisor,
+                feeDivisor: new BigNumber(this._networkSettings.feeDivisor),
             })
             if (offer.expectedAddress != offer.utxoEntry.address) {
                 return undefined
@@ -224,7 +226,7 @@ export class MarketToken {
         return this._offers
     }
 
-    public tokenId(): string {
+    public tokenId(): string | undefined {
         return this._tokenId
     }
 

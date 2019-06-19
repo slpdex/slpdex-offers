@@ -1,6 +1,6 @@
 {
   "name": "slpdex-market",
-  "version": "0.1.7",
+  "version": "0.1.14",
   "description": "Query offers on slpdex.cash",
   "main": "dist/index.js",
   "scripts": {
@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@types/js-base64": "^2.3.1",
+    "bignumber.js": "^9.0.0",
     "cashaddrjs": "^0.3.3",
     "cashcontracts": "^0.1.20",
     "immutable": "^4.0.0-rc.12",
