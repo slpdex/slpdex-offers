@@ -3,6 +3,7 @@ import { Base64 } from 'js-base64'
 import { LOKAD_ID_BASE64, VERSION, decodePrice } from './base'
 import { defaultNetworkSettings } from './network'
 import BigNumber from 'bignumber.js'
+import Fuse from 'fuse.js'
 
 export interface TokenDetails {
     decimals: number
@@ -116,6 +117,19 @@ export type TokenSortByKey = 'totalNumberOfOpenOffers'
                            | 'volumeSatoshis'
                            | 'priceIncrease'
 
+const fuseOptions = {
+    shouldSort: true,
+    threshold: 0.6,
+    location: 0,
+    distance: 100,
+    maxPatternLength: 32,
+    minMatchCharLength: 1,
+    keys: [
+        'symbol',
+        'name',
+    ]
+}
+
 export class MarketOverview {
     private _tokenDetails: Map<string, TokenDetails> = Map()
     private _tokenLastTrades: Map<string, TokenTotal> = Map()
@@ -123,6 +137,7 @@ export class MarketOverview {
     private _tokenPrices: Map<string, TokenPrice> = Map()
     private _tokenPriceIncreases: Map<string, TokenPriceIncrease> = Map()
     private _tokenOverview: Map<string, TokenOverview> = Map()
+    private _fuse = new Fuse([] as TokenOverview[], fuseOptions)
 
     private constructor() {
     }
@@ -432,6 +447,7 @@ export class MarketOverview {
                 return [key, overview]
             })
         )
+        this._fuse = new Fuse(this._tokenOverview.valueSeq().toArray(), fuseOptions)
     }
 
     public tokenDetails(tokenId: string): TokenDetails | undefined {
@@ -477,5 +493,12 @@ export class MarketOverview {
             .skip(skip)
             .take(limit)
             .toList()
+    }
+
+    public searchTokens(query: string): List<TokenOverview> {
+        const tokenById = this._tokenOverview.get(query)
+        if (tokenById !== undefined)
+            return List.of(tokenById)
+        return List(this._fuse.search(query))
     }
 }
