@@ -1,6 +1,6 @@
 {
   "name": "slpdex-market",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "Query offers on slpdex.cash",
   "main": "dist/index.js",
   "scripts": {
